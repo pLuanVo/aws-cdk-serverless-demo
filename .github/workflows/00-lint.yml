@@ -3,8 +3,20 @@ name: Lint
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+      - 'scripts/test-payloads/**'
+      - 'scripts/generate-diagram.py'
+      - LICENSE
   pull_request:
     branches: [main]
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+      - 'scripts/test-payloads/**'
+      - 'scripts/generate-diagram.py'
+      - LICENSE
 
 jobs:
   typecheck:

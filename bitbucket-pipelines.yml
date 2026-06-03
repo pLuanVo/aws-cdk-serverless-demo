@@ -7,6 +7,16 @@ pipelines:
           name: Lint
           caches:
             - node
+          condition:
+            changesets:
+              includePaths:
+                - 'bin/**'
+                - 'lib/**'
+                - 'lambda/**'
+                - 'package*.json'
+                - 'tsconfig.json'
+                - 'cdk.json'
+                - 'bitbucket-pipelines.yml'
           script:
             - npm ci
             - npx tsc --noEmit
@@ -18,6 +28,16 @@ pipelines:
             - node
           services:
             - docker
+          condition:
+            changesets:
+              includePaths:
+                - 'bin/**'
+                - 'lib/**'
+                - 'lambda/**'
+                - 'package*.json'
+                - 'tsconfig.json'
+                - 'cdk.json'
+                - 'bitbucket-pipelines.yml'
           script:
             - npm ci
             - echo "$BITBUCKET_STEP_OIDC_TOKEN" > /tmp/web-identity-token

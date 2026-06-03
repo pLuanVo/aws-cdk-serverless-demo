@@ -50,21 +50,24 @@ curl -sS -X POST "$URL" \
 
 Both test scenarios with payloads: [`scripts/test-payloads/`](scripts/test-payloads/).
 
-## CI/CD (GitHub Actions + OIDC)
+## CI/CD — Dual Pipeline (GitHub Actions + Bitbucket Pipelines)
 
-**Zero stored AWS credentials.** GitHub Actions authenticates via OIDC federation — short-lived tokens (1 hour), scoped to this repo only, no secret rotation needed. See [`docs/ARCHITECTURE.md` → CI/CD section](docs/ARCHITECTURE.md#cicd--github-actions-with-oidc) for the full OIDC flow diagram and comparison with stored keys.
+**Zero stored AWS credentials.** Both pipelines authenticate via OIDC federation — short-lived tokens (1 hour), scoped to their respective repo, no secret rotation needed. See [`docs/ARCHITECTURE.md` → CI/CD section](docs/ARCHITECTURE.md#cicd--github-actions-with-oidc) for the full OIDC flow and comparison with stored keys.
 
-Bootstrap flow (chicken-egg): deploy locally once to create the OIDC provider + IAM role, then all subsequent changes go through CI.
+| Platform | Pipeline file | OIDC Role |
+|---|---|---|
+| **GitHub Actions** | `.github/workflows/` (00-lint + 01-deploy) | `github-actions-aws-cdk-serverless-demo` |
+| **Bitbucket Pipelines** | `bitbucket-pipelines.yml` (lint + deploy) | `bitbucket-deploy-aws-cdk-serverless-demo` |
+
+Both pipelines skip runs when only docs/markdown files change (`paths-ignore` / `changesets`).
+
+Bootstrap flow (chicken-egg): deploy locally once to create OIDC providers + IAM roles, then all subsequent changes go through CI.
 
 ```bash
-# After first deploy, get the role ARN
-aws cloudformation describe-stacks \
-  --stack-name OrderPipelineStack \
-  --query "Stacks[0].Outputs[?OutputKey=='DeployRoleArn'].OutputValue" \
-  --output text
-
-# Set it as a GitHub repository secret
-gh secret set AWS_DEPLOY_ROLE_ARN --body "arn:aws:iam::123456789012:role/github-actions-aws-cdk-serverless-demo"
+# After first deploy, set the role ARNs as platform secrets
+# GitHub
+gh secret set AWS_DEPLOY_ROLE_ARN --body "arn:aws:iam::ACCOUNT:role/github-actions-aws-cdk-serverless-demo"
+# Bitbucket: set AWS_OIDC_ROLE_ARN as a pipeline variable in repo settings
 ```
 
 Push to `main` triggers: lint (TypeScript) → synth → deploy. Docker image for the container Lambda is built and pushed to ECR as part of `cdk deploy`.
@@ -94,9 +97,10 @@ Push to `main` triggers: lint (TypeScript) → synth → deploy. Docker image fo
 │       ├── Dockerfile
 │       ├── requirements.txt           # requests library
 │       └── index.py                   # SNS publish + webhook POST
+├── bitbucket-pipelines.yml            # Bitbucket Pipelines (OIDC)
 ├── .github/workflows/
-│   ├── 00-lint.yml                    # TypeScript type check
-│   └── 01-deploy.yml                  # CDK synth + deploy (OIDC)
+│   ├── 00-lint.yml                    # GitHub Actions lint
+│   └── 01-deploy.yml                  # GitHub Actions deploy (OIDC)
 ├── docs/
 │   ├── ARCHITECTURE.md                # Design decisions + service deep dive
 │   ├── TEST_CAPTURES.md               # End-to-end test screenshots

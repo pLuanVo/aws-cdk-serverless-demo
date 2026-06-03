@@ -11,6 +11,7 @@ from diagrams.aws.security import SecretsManager
 from diagrams.aws.security import IdentityAndAccessManagementIam as IAM
 from diagrams.aws.general import Client
 from diagrams.onprem.vcs import Github
+from diagrams.onprem.ci import Jenkins
 import os
 
 OUT = os.path.join(os.path.dirname(__file__), '..', 'docs', 'assets', 'architecture')
@@ -45,9 +46,10 @@ with Diagram(
     secrets = SecretsManager('Secrets Mgr')
     ecr = ECR('ECR')
 
-    with Cluster('CI/CD (GitHub Actions)'):
+    with Cluster('CI/CD (dual pipeline)'):
         github = Github('GitHub\nActions')
-        oidc_role = IAM('OIDC\nDeploy Role')
+        bitbucket = Jenkins('Bitbucket\nPipelines')
+        oidc_role = IAM('OIDC\nDeploy Roles')
 
     client >> apigw >> validate >> receipt >> notify
 
@@ -64,4 +66,5 @@ with Diagram(
     kms_key >> Edge(style='dotted', color='#999') >> [dynamodb, s3, sns, dlq]
 
     github >> Edge(label='OIDC', style='bold', color='#24292E') >> oidc_role
+    bitbucket >> Edge(label='OIDC', style='bold', color='#0052CC') >> oidc_role
     oidc_role >> Edge(label='cdk deploy', style='dashed', color='#24292E') >> apigw
