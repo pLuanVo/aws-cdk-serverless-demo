@@ -1,0 +1,28 @@
+image: node:20
+
+pipelines:
+  branches:
+    main:
+      - step:
+          name: Lint
+          caches:
+            - node
+          script:
+            - npm ci
+            - npx tsc --noEmit
+
+      - step:
+          name: Deploy
+          oidc: true
+          caches:
+            - node
+          services:
+            - docker
+          script:
+            - npm ci
+            - echo "$BITBUCKET_STEP_OIDC_TOKEN" > /tmp/web-identity-token
+            - export AWS_WEB_IDENTITY_TOKEN_FILE=/tmp/web-identity-token
+            - export AWS_ROLE_ARN="$AWS_OIDC_ROLE_ARN"
+            - export AWS_DEFAULT_REGION=ap-southeast-1
+            - npx cdk synth
+            - npx cdk deploy --all --require-approval never

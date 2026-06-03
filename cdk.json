@@ -2,6 +2,9 @@
   "app": "npx ts-node bin/app.ts",
   "context": {
     "githubOrg": "pLuanVo",
-    "githubRepo": "aws-cdk-serverless-demo"
+    "githubRepo": "aws-cdk-serverless-demo",
+    "bitbucketWorkspace": "vpluan",
+    "bitbucketWorkspaceUuid": "66498734-701c-49a9-b464-4caf78daa1f5",
+    "bitbucketRepoUuid": "{57c466d7-eb76-4c3e-abab-e2c940924e38}"
   }
 }

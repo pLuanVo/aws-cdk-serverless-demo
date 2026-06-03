@@ -62,13 +62,45 @@ export class OrderPipelineStack extends cdk.Stack {
       maxSessionDuration: cdk.Duration.hours(1),
     });
 
+    // --- Bitbucket Pipelines OIDC ---
+    const bbWorkspace = this.node.tryGetContext('bitbucketWorkspace') || 'vpluan';
+    const bbWorkspaceUuid = this.node.tryGetContext('bitbucketWorkspaceUuid') || '66498734-701c-49a9-b464-4caf78daa1f5';
+    const bbRepoUuid = this.node.tryGetContext('bitbucketRepoUuid') || '{57c466d7-eb76-4c3e-abab-e2c940924e38}';
+
+    const bbOidcProvider = new iam.OpenIdConnectProvider(this, 'BitbucketOidc', {
+      url: `https://api.bitbucket.org/2.0/workspaces/${bbWorkspace}/pipelines-config/identity/oidc`,
+      clientIds: [`ari:cloud:bitbucket::workspace/${bbWorkspaceUuid}`],
+    });
+
+    const bbDeployRole = new iam.Role(this, 'BitbucketDeployRole', {
+      roleName: `bitbucket-deploy-${githubRepo}`,
+      assumedBy: new iam.WebIdentityPrincipal(
+        bbOidcProvider.openIdConnectProviderArn,
+        {
+          StringEquals: {
+            [`api.bitbucket.org/2.0/workspaces/${bbWorkspace}/pipelines-config/identity/oidc:aud`]:
+              `ari:cloud:bitbucket::workspace/${bbWorkspaceUuid}`,
+          },
+          StringLike: {
+            [`api.bitbucket.org/2.0/workspaces/${bbWorkspace}/pipelines-config/identity/oidc:sub`]:
+              `${bbRepoUuid}:*`,
+          },
+        },
+      ),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName('AdministratorAccess'),
+      ],
+      maxSessionDuration: cdk.Duration.hours(1),
+    });
+
     // --- Outputs ---
     new cdk.CfnOutput(this, 'ApiUrl', { value: api.restApi.url });
     new cdk.CfnOutput(this, 'OrdersEndpoint', { value: `${api.restApi.url}orders` });
     new cdk.CfnOutput(this, 'StateMachineArn', { value: processing.stateMachine.stateMachineArn });
     new cdk.CfnOutput(this, 'OrdersTableName', { value: dataStores.ordersTable.tableName });
     new cdk.CfnOutput(this, 'ReceiptsBucketName', { value: dataStores.receiptsBucket.bucketName });
-    new cdk.CfnOutput(this, 'DeployRoleArn', { value: deployRole.roleArn });
+    new cdk.CfnOutput(this, 'GitHubDeployRoleArn', { value: deployRole.roleArn });
+    new cdk.CfnOutput(this, 'BitbucketDeployRoleArn', { value: bbDeployRole.roleArn });
     new cdk.CfnOutput(this, 'DlqUrl', { value: messaging.dlq.queueUrl });
   }
 }
