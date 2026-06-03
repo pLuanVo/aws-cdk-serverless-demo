@@ -1,0 +1,25 @@
+# CDK
+cdk.out/
+dist/
+
+# Dependencies
+node_modules/
+
+# TypeScript
+*.js
+*.d.ts
+!bin/app.js
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env / secrets
+.env
+.env.*
+*.pem
+*.key

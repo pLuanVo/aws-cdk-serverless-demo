@@ -1,0 +1,8 @@
+{
+  "customerName": "Nguyen Van A",
+  "items": [
+    { "name": "Cloud Architecture Book", "qty": 1, "price": 49.99 },
+    { "name": "AWS Sticker Pack", "qty": 2, "price": 9.99 }
+  ],
+  "totalAmount": 69.97
+}

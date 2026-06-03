@@ -1,0 +1,22 @@
+{
+  "name": "aws-cdk-serverless-demo",
+  "version": "1.0.0",
+  "private": true,
+  "bin": {
+    "app": "bin/app.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "synth": "npx cdk synth",
+    "deploy": "npx cdk deploy --all --require-approval never",
+    "destroy": "npx cdk destroy --all --force"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.170.0",
+    "constructs": "^10.4.0"
+  },
+  "devDependencies": {
+    "typescript": "~5.7.0",
+    "@types/node": "^22.0.0"
+  }
+}
