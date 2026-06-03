@@ -8,7 +8,9 @@ from diagrams.aws.network import APIGateway
 from diagrams.aws.storage import S3
 from diagrams.aws.security import KeyManagementService as KMS
 from diagrams.aws.security import SecretsManager
+from diagrams.aws.security import IdentityAndAccessManagementIam as IAM
 from diagrams.aws.general import Client
+from diagrams.onprem.vcs import Github
 import os
 
 OUT = os.path.join(os.path.dirname(__file__), '..', 'docs', 'assets', 'architecture')
@@ -31,9 +33,9 @@ with Diagram(
     apigw = APIGateway('API Gateway\nPOST /orders')
 
     with Cluster('Step Functions State Machine'):
-        validate = Lambda('Validate Order')
-        receipt = Lambda('Generate Receipt')
-        notify = Lambda('Send Notification\n(ECR Container)')
+        validate = Lambda('Validate Order\n(zip)')
+        receipt = Lambda('Generate Receipt\n(zip)')
+        notify = Lambda('Send Notification\n(container)')
 
     dynamodb = Dynamodb('DynamoDB\nOrders')
     s3 = S3('S3 Bucket\nReceipts')
@@ -42,6 +44,10 @@ with Diagram(
     kms_key = KMS('KMS CMK')
     secrets = SecretsManager('Secrets Mgr')
     ecr = ECR('ECR')
+
+    with Cluster('CI/CD (GitHub Actions)'):
+        github = Github('GitHub\nActions')
+        oidc_role = IAM('OIDC\nDeploy Role')
 
     client >> apigw >> validate >> receipt >> notify
 
@@ -56,3 +62,6 @@ with Diagram(
     secrets >> Edge(style='dotted', color='#666') >> notify
     ecr >> Edge(style='dotted', color='#666') >> notify
     kms_key >> Edge(style='dotted', color='#999') >> [dynamodb, s3, sns, dlq]
+
+    github >> Edge(label='OIDC', style='bold', color='#24292E') >> oidc_role
+    oidc_role >> Edge(label='cdk deploy', style='dashed', color='#24292E') >> apigw

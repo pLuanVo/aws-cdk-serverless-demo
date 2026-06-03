@@ -20,7 +20,7 @@ End-to-end serverless order processing pipeline: **POST → API Gateway → Step
 
 ![Architecture](docs/assets/architecture.png)
 
-Design decisions and ADRs: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+Design decisions, service deep dive, and data flows: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Test screenshots: [`docs/TEST_CAPTURES.md`](docs/TEST_CAPTURES.md).
 
 ## Quickstart
 
@@ -52,7 +52,9 @@ Both test scenarios with payloads: [`scripts/test-payloads/`](scripts/test-paylo
 
 ## CI/CD (GitHub Actions + OIDC)
 
-Bootstrap flow (chicken-egg): deploy locally once to create the OIDC role, then all subsequent changes go through CI.
+**Zero stored AWS credentials.** GitHub Actions authenticates via OIDC federation — short-lived tokens (1 hour), scoped to this repo only, no secret rotation needed. See [`docs/ARCHITECTURE.md` → CI/CD section](docs/ARCHITECTURE.md#cicd--github-actions-with-oidc) for the full OIDC flow diagram and comparison with stored keys.
+
+Bootstrap flow (chicken-egg): deploy locally once to create the OIDC provider + IAM role, then all subsequent changes go through CI.
 
 ```bash
 # After first deploy, get the role ARN
@@ -65,7 +67,7 @@ aws cloudformation describe-stacks \
 gh secret set AWS_DEPLOY_ROLE_ARN --body "arn:aws:iam::123456789012:role/github-actions-aws-cdk-serverless-demo"
 ```
 
-Push to `main` triggers: lint (TypeScript) → synth → deploy.
+Push to `main` triggers: lint (TypeScript) → synth → deploy. Docker image for the container Lambda is built and pushed to ECR as part of `cdk deploy`.
 
 ## Repo structure
 
@@ -96,7 +98,9 @@ Push to `main` triggers: lint (TypeScript) → synth → deploy.
 │   ├── 00-lint.yml                    # TypeScript type check
 │   └── 01-deploy.yml                  # CDK synth + deploy (OIDC)
 ├── docs/
-│   └── ARCHITECTURE.md                # Design decisions
+│   ├── ARCHITECTURE.md                # Design decisions + service deep dive
+│   ├── TEST_CAPTURES.md               # End-to-end test screenshots
+│   └── assets/                        # Diagram + test capture images
 └── scripts/
     ├── generate-diagram.py            # Architecture diagram generator
     └── test-payloads/                 # Curl payloads for testing
@@ -125,11 +129,13 @@ npx cdk destroy --all --force
 
 ## Scaling beyond this demo
 
-This is a **single-stack demo** — the CDK layout is kept flat for readability. For a production multi-environment setup:
+This demo uses a **single stack with 5 CDK Constructs** (Encryption, DataStores, Messaging, Processing, Api) — typed props, public exports, clean composition. For a production multi-environment setup:
 
-- **CDK Pipelines**: self-mutating CI/CD pipeline with `Wave` for parallel environment deploys, manual approval gates for prod
-- **Separate stacks per concern**: `NetworkStack`, `DataStack`, `ComputeStack`, `ObservabilityStack` — deploy independently, share via `CfnOutput` / SSM Parameter Store
+- **Separate stacks**: promote constructs to independent stacks (`DataStack`, `ComputeStack`) — deploy independently, share via `CfnOutput` / SSM Parameter Store
+- **CDK Pipelines**: self-mutating CI/CD with `Wave` for parallel environment deploys, manual approval gates for prod
 - **Multi-account**: AWS Organizations with separate accounts for dev/staging/prod, cross-account deployment roles
 - **Monitoring**: CloudWatch Alarms on Lambda errors + Step Functions failures, X-Ray distributed tracing, CloudWatch Dashboards
+- **SNS subscriptions**: email/SMS alerts, SQS fan-out for async consumers, Lambda for custom routing
+- **DLQ processing**: Lambda consumer for automatic retry, CloudWatch Alarm on queue depth > 0
 - **Multi-region**: Route 53 failover, DynamoDB Global Tables, S3 Cross-Region Replication
 - **Security hardening**: per-service KMS keys, VPC-bound Lambda, WAF on API Gateway, SCPs at org level
