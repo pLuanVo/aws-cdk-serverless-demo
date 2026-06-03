@@ -18,25 +18,7 @@ End-to-end serverless order processing pipeline: **POST → API Gateway → Step
 
 ## Architecture
 
-```
-Client POST /orders
-        │
-        ▼
-   API Gateway (REST)
-        │
-        ▼
-   Step Functions ─────────────────────────────────────┐
-        │                                              │
-   ┌────▼─────┐    ┌──────▼───────┐    ┌─────▼──────┐ │
-   │ Validate  │───▶│  Generate    │───▶│   Notify   │ │
-   │  Order    │    │  Receipt     │    │ (container) │ │
-   │ (Lambda)  │    │  (Lambda)    │    │  (Lambda)  │ │
-   └────┬──────┘    └──────┬───────┘    └─────┬──────┘ │
-        │                  │                  │        │ on error
-        ▼                  ▼                  ▼        ▼
-   DynamoDB            S3 Bucket           SNS Topic  SQS DLQ
-   (orders)        (receipts, KMS)     (notifications)
-```
+![Architecture](docs/assets/architecture.png)
 
 Design decisions and ADRs: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
@@ -96,7 +78,13 @@ Push to `main` triggers: lint (TypeScript) → synth → deploy.
 ├── bin/
 │   └── app.ts                         # CDK app entry point
 ├── lib/
-│   └── order-pipeline-stack.ts        # Single stack — all resources
+│   ├── order-pipeline-stack.ts        # Stack — composes constructs + OIDC
+│   └── constructs/
+│       ├── encryption.ts              # KMS CMK + Secrets Manager
+│       ├── data-stores.ts             # DynamoDB + S3
+│       ├── messaging.ts               # SNS + SQS
+│       ├── processing.ts             # Lambda ×3 + Step Functions
+│       └── api.ts                     # API Gateway + integration
 ├── lambda/
 │   ├── validate-order/index.py        # Validate + DynamoDB put
 │   ├── generate-receipt/index.py      # Receipt JSON → S3
@@ -110,6 +98,7 @@ Push to `main` triggers: lint (TypeScript) → synth → deploy.
 ├── docs/
 │   └── ARCHITECTURE.md                # Design decisions
 └── scripts/
+    ├── generate-diagram.py            # Architecture diagram generator
     └── test-payloads/                 # Curl payloads for testing
         ├── happy-path.json
         └── invalid-order.json
