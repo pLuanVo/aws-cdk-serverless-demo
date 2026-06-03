@@ -11,7 +11,7 @@ from diagrams.aws.security import SecretsManager
 from diagrams.aws.security import IdentityAndAccessManagementIam as IAM
 from diagrams.aws.general import Client
 from diagrams.onprem.vcs import Github
-from diagrams.onprem.ci import Jenkins
+from diagrams.custom import Custom
 import os
 
 OUT = os.path.join(os.path.dirname(__file__), '..', 'docs', 'assets', 'architecture')
@@ -48,7 +48,7 @@ with Diagram(
 
     with Cluster('CI/CD (dual pipeline)'):
         github = Github('GitHub\nActions')
-        bitbucket = Jenkins('Bitbucket\nPipelines')
+        bitbucket = Custom('Bitbucket\nPipelines', '/tmp/bitbucket-icon.png')
         oidc_role = IAM('OIDC\nDeploy Roles')
 
     client >> apigw >> validate >> receipt >> notify
